@@ -509,14 +509,14 @@
         import { getFirestore, collection, onSnapshot, query, where, getDocs, getDoc, doc, addDoc, updateDoc, setDoc, serverTimestamp, orderBy, limit } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js";
         import { getAuth, signInWithEmailAndPassword, createUserWithEmailAndPassword, onAuthStateChanged, signOut, updateProfile, EmailAuthProvider, reauthenticateWithCredential, updatePassword, sendPasswordResetEmail } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-auth.js";
 
-        const firebaseConfig = {
-            apiKey: "AIzaSyBOOrmOX86YD2r2_NUS60TUtuhRM_SLFYQ",
-            authDomain: "pritom-62c29.firebaseapp.com",
-            projectId: "pritom-62c29",
-            storageBucket: "pritom-62c29.firebasestorage.app",
-            messagingSenderId: "937768140621",
-            appId: "1:937768140621:web:deb496a53dd35ae4b34104"
-        };
+const firebaseConfig = {
+  apiKey: "AIzaSyDIbUu2KuZpwsLZ1jnPPWD1IVtKjBESC_E",
+  authDomain: "gift-corner-f8b53.firebaseapp.com",
+  projectId: "gift-corner-f8b53",
+  storageBucket: "gift-corner-f8b53.firebasestorage.app",
+  messagingSenderId: "955858360978",
+  appId: "1:955858360978:web:0d06d77c84ea480416644b"
+};
         const app = initializeApp(firebaseConfig); const db = getFirestore(app); const auth = getAuth(app);
 
         window.cachedProducts = {}; window.searchProductsArray = []; window.cart = JSON.parse(localStorage.getItem('cart') || '[]'); window.favorites = JSON.parse(localStorage.getItem('favorites') || '[]'); window.currentUser = null;
