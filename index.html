@@ -476,6 +476,22 @@
         </div>
     </div>
 
+<!-- Color Selection Popup Modal -->
+<div id="colorSelectionModal" class="fixed inset-0 bg-slate-900/60 z-[100] hidden flex items-center justify-center px-4 backdrop-blur-sm transition-opacity duration-300">
+    <div class="bg-white dark:bg-slate-800 w-full max-w-sm p-6 rounded-[2.5rem] shadow-2xl relative transform scale-95 transition-transform duration-300" id="colorModalContent">
+        <div class="w-16 h-16 bg-indigo-100 dark:bg-indigo-900/30 text-indigo-600 rounded-full flex items-center justify-center text-2xl mx-auto mb-4">
+            <i class="fa-solid fa-palette"></i>
+        </div>
+        <h3 class="text-xl font-black text-center text-slate-800 dark:text-white mb-2">কালার সিলেক্ট করুন</h3>
+        <p class="text-xs text-center text-slate-500 mb-6 font-medium">অর্ডারটি সম্পন্ন করতে আপনার পছন্দের রঙটি বেছে নিন</p>
+        
+        <!-- কালার লিস্ট এখানে আসবে -->
+        <div id="popupColorList" class="flex flex-wrap gap-3 justify-center mb-8"></div>
+        
+        <button onclick="closeColorPopup()" class="w-full py-3 text-slate-400 font-bold hover:text-rose-500 transition">বন্ধ করুন</button>
+    </div>
+</div>
+
     <!-- Toast Notification -->
     <div id="toast" class="fixed top-20 right-4 bg-slate-900/95 backdrop-blur text-white px-5 py-3 rounded-xl shadow-2xl transform translate-x-full transition-all duration-300 z-[100] flex items-center gap-3 font-medium text-sm border border-slate-700"><i class="fa-solid fa-circle-check text-emerald-400"></i> <span id="toastMsg">Message</span></div>
 
@@ -507,6 +523,8 @@
         window.adminSettings = { bkash: "01XXXXXXXXX", nagad: "01XXXXXXXXX", deliveryCharge: 120, adminWhatsapp: "", adminAddress: "", adminQR: "", adsterraLink: "" };
         let chatUnsubscribe = null, homeUnsubscribe = null, homeLimit = 15, currentHomeCount = 0;
 
+        
+        
         window.showToast = (msg, type='info') => { const toast = document.getElementById('toast'); document.getElementById('toastMsg').innerText = msg; toast.classList.remove('translate-x-full'); setTimeout(() => toast.classList.add('translate-x-full'), 3000); }
 
         // Dark Mode Setup
@@ -650,34 +668,88 @@ window.handleForgotPassword = async () => {
 }
         window.logout = async () => { localStorage.removeItem('userInfo'); await signOut(auth); switchTab('home'); showToast("Logged Out"); }
 
-        onAuthStateChanged(auth, async (user) => {
-            currentUser = user;
-            if(user) {
-                document.getElementById('meFeatures').classList.remove('hidden');
-                
-                let fName = user.displayName || cachedUser.name || "Customer";
-                let emailOrPhone = user.email || cachedUser.emailOrPhone || "";
-                
-                updateUI(fName, emailOrPhone);
-                
-                onSnapshot(doc(db, "users", user.uid), (uDoc) => { 
-                    if(uDoc.exists()) { 
-                        const d = uDoc.data(); 
-                        fName = `${d.firstName || ''} ${d.lastName || ''}`.trim() || fName; 
-                        emailOrPhone = d.email || d.phone || emailOrPhone; 
-                        
-                        localStorage.setItem('userInfo', JSON.stringify({name: fName, emailOrPhone: emailOrPhone}));
-                        updateUI(fName, emailOrPhone); 
-                    } 
-                });
+// --- এই অংশটি আপনার পুরাতন updateUI এবং onAuthStateChanged এর জায়গায় বসান ---
 
-                onSnapshot(query(collection(db, "orders"), where("userId", "==", user.uid)), snap => { let p=0, c=0, sh=0, d=0; snap.forEach(doc => { const st = doc.data().status; if(st === 'Pending') p++; if(st === 'Confirmed') c++; if(st === 'Shipping') sh++; if(st === 'Delivered') d++; }); const bp = document.getElementById('badgePending'), bc = document.getElementById('badgeProcessing'), bs = document.getElementById('badgeShipping'), bd = document.getElementById('badgeDelivered'); if(bp) { bp.innerText = p; p>0 ? bp.classList.remove('hidden') : bp.classList.add('hidden'); } if(bc) { bc.innerText = c; c>0 ? bc.classList.remove('hidden') : bc.classList.add('hidden'); } if(bs) { bs.innerText = sh; sh>0 ? bs.classList.remove('hidden') : bs.classList.add('hidden'); } if(bd) { bd.innerText = d; d>0 ? bd.classList.remove('hidden') : bd.classList.add('hidden'); } });
+// UI আপডেট করার মূল ফাংশন
+window.updateUI = (name, emailOrPhone) => {
+    const profileContainer = document.getElementById('profileContainer');
+    if (profileContainer) {
+        profileContainer.innerHTML = `
+            <div class="w-14 h-14 bg-white dark:bg-slate-800 text-indigo-600 rounded-full flex items-center justify-center text-2xl shadow-md border-2 border-indigo-100 dark:border-slate-600">
+                <i class="fa-solid fa-user"></i>
+            </div>
+            <div class="text-left">
+                <h2 class="text-xl font-black text-white leading-tight">${name || 'Loading...'}</h2>
+                <p class="text-indigo-200 text-xs font-medium">${emailOrPhone || ''}</p>
+            </div>`;
+    }
+};
+
+// অথেনটিকেশন স্টেট চেক
+onAuthStateChanged(auth, async (user) => {
+    currentUser = user;
+    const meFeatures = document.getElementById('meFeatures');
+    const profileContainer = document.getElementById('profileContainer');
+
+    if (user) {
+        // ১. শুরুতে লোডিং বা ক্যাশ ডেটা দেখানো
+        const cached = JSON.parse(localStorage.getItem('userInfo') || '{}');
+        updateUI(cached.name || "User", user.email || user.phoneNumber || cached.emailOrPhone);
+        
+        if (meFeatures) meFeatures.classList.remove('hidden');
+
+        // ২. Firestore থেকে লেটেস্ট ডেটা নিয়ে আসা
+        const userDocRef = doc(db, "users", user.uid);
+        
+        // Snapshot ব্যবহার করছি যাতে ডেটা চেঞ্জ হলে সাথে সাথে আপডেট হয়
+        onSnapshot(userDocRef, (uDoc) => {
+            if (uDoc.exists()) {
+                const d = uDoc.data();
+                const fullName = `${d.firstName || ''} ${d.lastName || ''}`.trim() || user.displayName || "Customer";
+                const contactInfo = d.phone || d.email || user.email;
+
+                // UI আপডেট এবং লোকাল স্টোরেজে সেভ
+                updateUI(fullName, contactInfo);
+                localStorage.setItem('userInfo', JSON.stringify({ name: fullName, emailOrPhone: contactInfo }));
             } else {
-                localStorage.removeItem('userInfo');
-                document.getElementById('profileContainer').innerHTML = `<div class="w-14 h-14 bg-white/20 text-white rounded-full flex items-center justify-center text-2xl border-2 border-white/30"><i class="fa-solid fa-user-shield"></i></div><div class="text-left"><h2 class="text-xl font-black text-white leading-tight">Guest User</h2><p class="text-indigo-200 text-xs font-medium cursor-pointer hover:underline" onclick="switchTab('login')">Login / Register</p></div>`;
-                document.getElementById('meFeatures').classList.add('hidden');
+                // যদি Firestore-এ ডেটা না থাকে তবে Auth Profile থেকে নাম নেবে
+                updateUI(user.displayName || "Customer", user.email);
             }
         });
+
+        // ৩. অর্ডার ব্যাজ আপডেট (আপনার আগের কোডটি এখানে থাকবে)
+        onSnapshot(query(collection(db, "orders"), where("userId", "==", user.uid)), snap => {
+            let p=0, c=0, sh=0, d=0;
+            snap.forEach(doc => {
+                const st = doc.data().status;
+                if(st === 'Pending') p++;
+                if(st === 'Confirmed') c++;
+                if(st === 'Shipping') sh++;
+                if(st === 'Delivered') d++;
+            });
+            const bp = document.getElementById('badgePending'), bc = document.getElementById('badgeProcessing'), bs = document.getElementById('badgeShipping'), bd = document.getElementById('badgeDelivered');
+            if(bp) { bp.innerText = p; p>0 ? bp.classList.remove('hidden') : bp.classList.add('hidden'); }
+            if(bc) { bc.innerText = c; c>0 ? bc.classList.remove('hidden') : bc.classList.add('hidden'); }
+            if(bs) { bs.innerText = sh; sh>0 ? bs.classList.remove('hidden') : bs.classList.add('hidden'); }
+            if(bd) { bd.innerText = d; d>0 ? bd.classList.remove('hidden') : bd.classList.add('hidden'); }
+        });
+
+    } else {
+        // ইউজার লগআউট অবস্থায় থাকলে
+        localStorage.removeItem('userInfo');
+        if (profileContainer) {
+            profileContainer.innerHTML = `
+                <div class="w-14 h-14 bg-white/20 text-white rounded-full flex items-center justify-center text-2xl border-2 border-white/30">
+                    <i class="fa-solid fa-user-shield"></i>
+                </div>
+                <div class="text-left">
+                    <h2 class="text-xl font-black text-white leading-tight">Guest User</h2>
+                    <p class="text-indigo-200 text-xs font-medium cursor-pointer hover:underline" onclick="switchTab('login')">Login / Register</p>
+                </div>`;
+        }
+        if (meFeatures) meFeatures.classList.add('hidden');
+    }
+});
 
         // ================= ACCOUNT DETAILS UPDATE =================
         window.openAccountDetails = async () => {
@@ -751,11 +823,29 @@ window.handleForgotPassword = async () => {
             }
         });
 
-        onSnapshot(collection(db, "categories"), async snap => {
-            const catContainer = document.getElementById('dynamicCategories');
-            if(snap.empty) { const defaults = [ { name: 'Gadgets', logo: 'https://cdn-icons-png.flaticon.com/512/343/343330.png' }, { name: 'Fashion', logo: 'https://cdn-icons-png.flaticon.com/512/3159/3159614.png' }, { name: 'Laptops', logo: 'https://cdn-icons-png.flaticon.com/512/3081/3081440.png' }, { name: 'Shoes', logo: 'https://cdn-icons-png.flaticon.com/512/2742/2742636.png' } ]; try { for(let c of defaults) await addDoc(collection(db, "categories"), c); } catch(e) {} return; }
-            catContainer.innerHTML = ''; snap.forEach(doc => { const c = doc.data(); catContainer.innerHTML += `<div onclick="filterCategory('${c.name}')" class="flex flex-col items-center min-w-[75px] snap-start cursor-pointer group"><div class="w-16 h-16 bg-white dark:bg-slate-800 group-hover:-translate-y-1 rounded-2xl flex items-center justify-center transition-all shadow-[0_4px_15px_rgba(0,0,0,0.05)] border border-slate-100 dark:border-slate-700/50 overflow-hidden p-3 relative z-10"><img src="${c.logo}" class="w-full h-full object-contain drop-shadow-sm"></div><span class="text-[11px] font-bold mt-2 text-slate-600 dark:text-slate-300 text-center leading-tight whitespace-nowrap">${c.name}</span></div>`; });
-        });
+onSnapshot(collection(db, "categories"), snap => {
+    const catContainer = document.getElementById('dynamicCategories');
+    if(!catContainer) return;
+    
+    // UI পরিষ্কার করা (যাতে বারবার রিপিট না হয়)
+    catContainer.innerHTML = ''; 
+    
+    if(snap.empty) {
+        catContainer.innerHTML = '<div class="text-slate-400 font-bold text-sm">No Categories Found</div>';
+        return;
+    }
+    
+    snap.forEach(doc => {
+        const c = doc.data();
+        catContainer.innerHTML += `
+            <div onclick="filterCategory('${c.name}')" class="flex flex-col items-center min-w-[75px] snap-start cursor-pointer group">
+                <div class="w-16 h-16 bg-white dark:bg-slate-800 group-hover:-translate-y-1 rounded-2xl flex items-center justify-center transition-all shadow-sm border border-slate-100 dark:border-slate-700/50 overflow-hidden p-3 relative z-10">
+                    <img src="${c.logo}" class="w-full h-full object-contain drop-shadow-sm">
+                </div>
+                <span class="text-[11px] font-bold mt-2 text-slate-600 dark:text-slate-300 text-center leading-tight whitespace-nowrap">${c.name}</span>
+            </div>`;
+    });
+});
 
         // ================= BANNER =================
         onSnapshot(query(collection(db, "banners"), where("active", "==", true)), snap => {
@@ -887,40 +977,7 @@ window.handleForgotPassword = async () => {
             }, 3000);
         };
 
-        // ================= PRODUCT DETAILS =================
-        window.openDetails = async (id) => {
-            let product = window.cachedProducts[id];
-            if(!product) { const snap = await getDoc(doc(db, "products", id)); if(snap.exists()) { product = {id: snap.id, ...snap.data()}; window.cachedProducts[id] = product; } else return; }
-            const hasOffer = product.offerPrice && product.offerPrice < product.price; const currentPrice = hasOffer ? product.offerPrice : product.price; let sliderHtml = product.images.map(img => `<img src="${img}" class="w-full h-72 md:h-96 object-contain snap-center flex-shrink-0 bg-slate-50 dark:bg-slate-900/50">`).join('');
-            const html = `
-                <div class="flex flex-col md:flex-row gap-8">
-                    <div class="w-full md:w-1/2 rounded-2xl overflow-hidden border border-slate-100 dark:border-slate-700 relative"><div class="flex overflow-x-auto hide-scroll snap-x-mandatory h-full">${sliderHtml}</div><div class="absolute bottom-2 w-full text-center text-[10px] font-bold text-slate-400 bg-black/10 backdrop-blur-sm py-1">SWIPE</div></div>
-                    <div class="w-full md:w-1/2 flex flex-col justify-center">
-                        <div class="bg-indigo-50 dark:bg-indigo-900/30 text-indigo-600 text-xs font-black px-3 py-1 rounded-full w-fit mb-4 uppercase tracking-wide">${product.category || 'General'}</div>
-                        <h2 class="text-3xl font-black mb-3 text-slate-800 dark:text-white leading-tight">${product.name}</h2>
-                        <div class="flex items-center gap-4 mb-6 bg-slate-50 dark:bg-slate-900/50 p-4 rounded-2xl border border-slate-100 dark:border-slate-700/50 w-fit">
-                            <span class="text-4xl text-indigo-600 font-black">৳${currentPrice}</span>${hasOffer ? `<div class="flex flex-col"><span class="text-sm text-slate-400 line-through font-bold">৳${product.price}</span><span class="text-xs text-red-500 font-black">Save ৳${product.price - product.offerPrice}</span></div>` : ''}
-                        </div>
-                        <p class="text-sm text-slate-500 dark:text-slate-400 mb-8 leading-relaxed font-medium">${product.description || 'No detailed description provided.'}</p>
-                        <div class="flex gap-4 mb-4">
-                            <button onclick="addToCart('${product.id}', true)" class="flex-1 bg-indigo-50 hover:bg-indigo-100 dark:bg-indigo-900/30 border border-indigo-200 dark:border-indigo-800 text-indigo-600 dark:text-indigo-400 py-4 rounded-2xl font-black transition shadow-sm" ${product.stock<=0?'disabled':''}>Add to Cart</button>
-                            <button onclick="buyNow('${product.id}')" class="flex-1 bg-indigo-600 text-white py-4 rounded-2xl font-black shadow-lg shadow-indigo-500/30 hover:bg-indigo-700 transition" ${product.stock<=0?'disabled':''}>Buy Now</button>
-                        </div>
-                    </div>
-                </div>
-                <div class="mt-8 border-t border-slate-100 dark:border-slate-700 pt-6"><h3 class="font-black text-lg mb-4 text-slate-800 dark:text-white flex items-center gap-2"><i class="fa-regular fa-star-half-stroke text-amber-500"></i> Ratings & Reviews</h3><div id="productReviewsList"><i class="fa-solid fa-spinner fa-spin text-indigo-500"></i> Loading reviews...</div></div>
-            `;
-            document.getElementById('detailsContainer').innerHTML = html; switchTab('details');
-            
-            getDocs(collection(db, "products", id, "reviews")).then(rSnap => {
-                const rCont = document.getElementById('productReviewsList'); rCont.innerHTML = '';
-                if(rSnap.empty) { rCont.innerHTML = '<p class="text-sm font-medium text-slate-400">No reviews yet. Buy this product to leave a review!</p>'; return; }
-                rSnap.forEach(rD => {
-                    const r = rD.data(); const stars = Array(5).fill('').map((_, i) => `<i class="fa-solid fa-star ${i<r.rating?'text-amber-400':'text-slate-300 dark:text-slate-700'} text-[10px]"></i>`).join('');
-                    rCont.innerHTML += `<div class="mb-3 p-4 bg-slate-50 dark:bg-slate-900/50 rounded-xl border border-slate-100 dark:border-slate-700"><div class="flex justify-between items-center"><span class="font-bold text-xs text-slate-700 dark:text-slate-300">${r.userName}</span><div class="flex gap-0.5">${stars}</div></div><p class="text-sm text-slate-600 dark:text-slate-400 mt-2 font-medium">${r.text}</p></div>`;
-                });
-            });
-        }
+
 
         window.setRating = (val) => { document.getElementById('currentRating').value = val; const stars = document.getElementById('starRating').children; for(let i=0; i<5; i++) stars[i].className = `fa-solid fa-star cursor-pointer transition ${i < val ? 'text-amber-400 hover:scale-110' : 'text-slate-300 dark:text-slate-600 hover:text-amber-400'}`; }
         window.openReviewModal = (productId) => { document.getElementById('revProductId').value = productId; document.getElementById('revText').value = ''; window.setRating(5); document.getElementById('reviewModal').classList.remove('hidden'); }
@@ -937,14 +994,7 @@ window.handleForgotPassword = async () => {
         const updateCartCount = () => { const count = window.cart.reduce((sum, item) => sum + item.qty, 0); document.getElementById('desktopCartCount').innerText = count; document.getElementById('mobileCartCount').innerText = count; }
         updateCartCount();
 
-        window.addToCart = (id, fromDetails=false) => {
-            if(!currentUser) return requireAuth(fromDetails ? 'details' : 'cart');
-            const product = window.cachedProducts[id]; const existing = window.cart.find(c => c.id === id);
-            if(existing) existing.qty += 1; else window.cart.push({ id: product.id, name: product.name, image: product.images[0], price: product.offerPrice || product.price, qty: 1, checked: true });
-            localStorage.setItem('cart', JSON.stringify(window.cart)); updateCartCount(); showToast('Added to Cart'); if(!fromDetails) switchTab('cart');
-        }
-        window.buyNow = (id) => { addToCart(id, true); switchTab('cart'); }
-
+       
         window.renderCart = () => {
             const container = document.getElementById('cartItemsContainer');
             if(window.cart.length === 0) { container.innerHTML = '<div class="text-center py-20 text-slate-400"><i class="fa-solid fa-bag-shopping text-6xl mb-4 text-slate-200 dark:text-slate-700"></i><br><p class="font-bold">Your cart is empty</p></div>'; document.getElementById('cartSubtotal').innerText = '৳0'; document.getElementById('cartTotal').innerText = '৳0'; return; }
@@ -969,18 +1019,166 @@ window.handleForgotPassword = async () => {
         window.changePayMethod = () => { const method = document.getElementById('chkPayMethod').value; document.getElementById('adminPayNumber').innerText = method === 'bkash' ? window.adminSettings.bkash : window.adminSettings.nagad; }
 
         window.closeOrderSuccess = () => document.getElementById('orderSuccessPopup').classList.add('hidden');
-        window.placeOrder = async (e) => {
-            const n = document.getElementById('chkName').value, p = document.getElementById('chkPhone').value, div = document.getElementById('chkDivision').value, dist = document.getElementById('chkDistrict').value, area = document.getElementById('chkArea').value, addr = document.getElementById('chkAddress').value;
-            const fullAddress = `${addr}, ${area}, ${dist}, ${div}`; const method = document.getElementById('chkPayMethod').value, trx = document.getElementById('chkTrx').value.trim();
-            if(!trx) return showToast("TrxID is required!", "error");
-            const items = window.cart.filter(c=>c.checked), sub = items.reduce((s,i)=>s+(i.price*i.qty),0), dc = window.adminSettings.deliveryCharge;
-            const btn = e.target; btn.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i> Processing...'; btn.disabled = true;
-            try {
-                await addDoc(collection(db, "orders"), { userId: currentUser.uid, customerInfo: {name:n, phone:p, address:fullAddress}, items, subtotal:sub, deliveryCharge:dc, grandTotal:sub+dc, paymentType: 'advance100', paymentMethod: method, trxId:trx, status:"Pending", createdAt:serverTimestamp() });
-                window.cart = window.cart.filter(c=>!c.checked); localStorage.setItem('cart', JSON.stringify(window.cart)); updateCartCount();
-                const pModal = document.getElementById('orderSuccessPopup'); pModal.classList.remove('hidden'); setTimeout(() => { document.getElementById('orderSuccessContent').classList.remove('scale-95', 'opacity-0'); }, 10);
-            } catch(err) { showToast("Error placing order", "error"); } btn.innerHTML = '<i class="fa-solid fa-check-circle"></i> Confirm Order'; btn.disabled = false;
-        }
+        
+// --- কালার সিলেকশন ও গ্লোবাল ভ্যারিয়েবল ---
+window.selectedColor = null; 
+window.checkoutMode = 'cart'; 
+window.directItem = null;
+
+window.selectColor = (color, el) => { 
+    window.selectedColor = color; 
+    document.querySelectorAll('.color-btn').forEach(b => b.classList.remove('ring-4', 'ring-indigo-500', 'border-indigo-600', 'bg-indigo-50')); 
+    el.classList.add('ring-4', 'ring-indigo-500', 'border-indigo-600', 'bg-indigo-50'); 
+};
+
+window.validatePurchase = (product) => { 
+    if(product.colors && product.colors.length > 0 && !window.selectedColor) { 
+        showToast("দয়া করে একটি কালার (Color) পছন্দ করুন।", "error"); 
+        return false; 
+    } 
+    return true; 
+};
+
+window.openDetails = async (id) => {
+    let product = window.cachedProducts[id];
+    if(!product) { const snap = await getDoc(doc(db, "products", id)); if(snap.exists()) { product = {id: snap.id, ...snap.data()}; window.cachedProducts[id] = product; } else return; }
+    
+    const hasOffer = product.offerPrice && product.offerPrice < product.price; 
+    const currentPrice = hasOffer ? product.offerPrice : product.price; 
+
+    let sliderHtml = product.images.map(img => `<img src="${img}" class="w-full h-72 md:h-96 object-contain snap-center flex-shrink-0 bg-white dark:bg-slate-900">`).join('');
+    if(product.video) { sliderHtml += `<div class="w-full h-72 md:h-96 snap-center flex-shrink-0 bg-black flex items-center justify-center relative"><video src="${product.video}" class="w-full h-full object-contain" controls></video></div>`; }
+
+    const html = `
+        <div class="flex flex-col md:flex-row gap-8">
+            <div class="w-full md:w-1/2 rounded-3xl overflow-hidden border border-slate-100 dark:border-slate-700 relative shadow-inner">
+                <div class="flex overflow-x-auto hide-scroll snap-x-mandatory h-full bg-white dark:bg-slate-900">${sliderHtml}</div>
+            </div>
+            <div class="w-full md:w-1/2 flex flex-col justify-center">
+                <div class="bg-indigo-50 dark:bg-indigo-900/30 text-indigo-600 text-xs font-black px-3 py-1 rounded-full w-fit mb-3 uppercase">${product.category || 'Product'}</div>
+                <h2 class="text-3xl font-black mb-3 text-slate-800 dark:text-white leading-tight">${product.name}</h2>
+                <div class="flex items-center gap-4 mb-6 bg-slate-50 dark:bg-slate-900/50 p-4 rounded-2xl border border-slate-100 dark:border-slate-700/50 w-fit">
+                    <span class="text-4xl text-indigo-600 font-black">৳${currentPrice}</span>
+                    ${hasOffer ? `<span class="text-sm text-slate-400 line-through font-bold">৳${product.price}</span>` : ''}
+                </div>
+
+                <!-- নতুন অ্যাকশন বাটন সেকশন -->
+                <div class="flex flex-col gap-3 mb-6">
+                    <div class="flex gap-4">
+                        <button onclick="addToCart('${product.id}')" class="flex-1 bg-indigo-50 text-indigo-600 py-4 rounded-2xl font-black transition border border-indigo-100">Add to Cart</button>
+                        <button onclick="buyNow('${product.id}')" class="flex-1 bg-indigo-600 text-white py-4 rounded-2xl font-black shadow-lg">Buy Now</button>
+                    </div>
+                    <button onclick="askAdminAboutProduct('${product.id}', '${product.name}')" class="w-full bg-emerald-500 text-white py-3.5 rounded-2xl font-bold flex items-center justify-center gap-2 hover:bg-emerald-600 transition"><i class="fa-solid fa-comment-dots"></i> এই প্রোডাক্টটি সম্পর্কে প্রশ্ন করুন</button>
+                </div>
+                <p class="text-sm text-slate-500 dark:text-slate-400 leading-relaxed font-medium">${product.description || 'No description available.'}</p>
+            </div>
+        </div>`;
+    document.getElementById('detailsContainer').innerHTML = html; 
+    switchTab('details');
+};
+// ১. গ্লোবাল ভ্যারিয়েবল
+window.currentActionData = { id: null, mode: null }; // কার্ট নাকি ডাইরেক্ট তা মনে রাখার জন্য
+
+// ২. পপআপ কন্ট্রোল ফাংশন
+window.openColorPopup = (id, mode) => {
+    const product = window.cachedProducts[id];
+    if (!product.colors || product.colors.length === 0) {
+        // যদি কালার না থাকে তবে সরাসরি কাজ করবে
+        if (mode === 'cart') window.actualAddToCart(id);
+        else window.actualBuyNow(id);
+        return;
+    }
+
+    // কালার থাকলে পপআপ দেখাবে
+    window.currentActionData = { id, mode };
+    const listCont = document.getElementById('popupColorList');
+    listCont.innerHTML = product.colors.map(c => `
+        <div onclick="window.selectColorAndProceed('${c}')" class="px-5 py-2.5 bg-slate-50 dark:bg-slate-700 border-2 border-slate-200 dark:border-slate-600 rounded-2xl text-sm font-black cursor-pointer hover:border-indigo-500 hover:text-indigo-600 dark:hover:text-indigo-400 transition-all active:scale-95 shadow-sm">
+            ${c}
+        </div>
+    `).join('');
+
+    document.getElementById('colorSelectionModal').classList.remove('hidden');
+    setTimeout(() => document.getElementById('colorModalContent').classList.remove('scale-95', 'opacity-0'), 10);
+};
+
+window.closeColorPopup = () => {
+    document.getElementById('colorModalContent').classList.add('scale-95', 'opacity-0');
+    setTimeout(() => document.getElementById('colorSelectionModal').classList.add('hidden'), 300);
+};
+
+// ৩. কালার সিলেক্ট করার পর আসল কাজ শুরু হবে
+window.selectColorAndProceed = (color) => {
+    window.selectedColor = color; // কালার সেট হলো
+    window.closeColorPopup();
+    
+    if (window.currentActionData.mode === 'cart') {
+        window.actualAddToCart(window.currentActionData.id);
+    } else {
+        window.actualBuyNow(window.currentActionData.id);
+    }
+};
+
+// ৪. মেইন বাটন ফাংশন (এগুলো এখন পপআপ চেক করবে)
+window.addToCart = (id) => window.openColorPopup(id, 'cart');
+window.buyNow = (id) => window.openColorPopup(id, 'direct');
+
+// ৫. ডাটাবেজ বা চেকআউটে পাঠানোর আসল লজিক
+window.actualAddToCart = (id) => {
+    if(!currentUser) return switchTab('login');
+    const product = window.cachedProducts[id];
+    const existing = window.cart.find(c => c.id === id && c.color === window.selectedColor);
+    
+    if(existing) existing.qty += 1;
+    else window.cart.push({ id: product.id, name: product.name, image: product.images[0], price: product.offerPrice || product.price, qty: 1, checked: true, color: window.selectedColor });
+    
+    localStorage.setItem('cart', JSON.stringify(window.cart));
+    updateCartCount();
+    showToast('কার্টে যোগ করা হয়েছে');
+    window.selectedColor = null; // কাজ শেষে রিসেট
+};
+
+window.actualBuyNow = (id) => {
+    if(!currentUser) return switchTab('login');
+    const product = window.cachedProducts[id];
+    window.checkoutMode = 'direct';
+    window.directItem = { id: product.id, name: product.name, image: product.images[0], price: product.offerPrice || product.price, qty: 1, color: window.selectedColor };
+    window.selectedColor = null; // কাজ শেষে রিসেট
+    switchTab('checkout');
+};
+
+
+
+// --- অর্ডার কনফার্ম করার ফাংশন ---
+window.placeOrder = async (e) => { 
+    const n = document.getElementById('chkName').value, 
+          p = document.getElementById('chkPhone').value, 
+          div = document.getElementById('chkDivision').value, 
+          dist = document.getElementById('chkDistrict').value, 
+          area = document.getElementById('chkArea').value, 
+          addr = document.getElementById('chkAddress').value, 
+          trx = document.getElementById('chkTrx').value.trim(), 
+          method = document.getElementById('chkPayMethod').value; 
+    
+    if(!n || !p || !div || !dist || !area || !addr || !trx) return showToast("সবগুলো তথ্য সঠিকভাবে পূরণ করুন এবং TrxID দিন।", "error"); 
+    
+    const items = window.checkoutMode === 'direct' ? [window.directItem] : window.cart.filter(c=>c.checked); 
+    const sub = items.reduce((s,i)=>s+(i.price*i.qty),0), dc = window.adminSettings.deliveryCharge; 
+    const btn = e.target; btn.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i> Processing...'; btn.disabled = true; 
+    
+    try { 
+        await addDoc(collection(db, "orders"), { userId: currentUser.uid, customerInfo: {name:n, phone:p, address:`${addr}, ${area}, ${dist}, ${div}`}, items, subtotal:sub, deliveryCharge:dc, grandTotal:sub+dc, paymentMethod: method, trxId:trx, status:"Pending", createdAt:serverTimestamp() }); 
+        if(window.checkoutMode === 'cart') { 
+            window.cart = window.cart.filter(c=>!c.checked); 
+            localStorage.setItem('cart', JSON.stringify(window.cart)); 
+            updateCartCount(); 
+        } 
+        const pModal = document.getElementById('orderSuccessPopup'); 
+        pModal.classList.remove('hidden'); 
+        setTimeout(() => { document.getElementById('orderSuccessContent').classList.remove('scale-95', 'opacity-0'); }, 10); 
+    } catch(err) { showToast("অর্ডারটি সম্পন্ন হয়নি, আবার চেষ্টা করুন।", "error"); } 
+    btn.innerHTML = '<i class="fa-solid fa-check-circle"></i> Confirm Order'; btn.disabled = false; 
+};
 
         // ================= SUPPORT CHAT =================
         const ensureChatDoc = async () => { const ref = doc(db, "support_chats", currentUser.uid); const snap = await getDoc(ref); if(!snap.exists()) { await setDoc(ref, { userId: currentUser.uid, userName: currentUser.displayName || 'Customer', userPhone: document.getElementById('chkPhone')?.value || '', userEmail: currentUser.email || '', lastMessage: 'Chat Started', adminUnread: true, userUnread: false, lastUpdated: serverTimestamp() }); } };
