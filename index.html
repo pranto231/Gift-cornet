@@ -50,7 +50,24 @@
 
         /* AI Image Scanner Line Animation */
         @keyframes scan { 0% { top: 0; } 50% { top: 100%; } 100% { top: 0; } }
-    </style>
+
+    /* সেকশনগুলো ডিফল্টভাবে একদম হাইড থাকবে */
+    .view-section { 
+        display: none !important; 
+        opacity: 0;
+    }
+    /* শুধুমাত্র active ক্লাস থাকলে দেখা যাবে */
+    .view-section.active { 
+        display: block !important; 
+        opacity: 1;
+        animation: fadeIn 0.3s ease-in-out;
+    }
+    
+    @keyframes fadeIn { 
+        from { opacity: 0; transform: translateY(10px); } 
+        to { opacity: 1; transform: translateY(0); } 
+    }
+</style>
 </head>
 <body class="bg-slate-50 dark:bg-slate-900 text-slate-800 dark:text-slate-200 transition-colors duration-300 pb-16 md:pb-0 relative pt-safe">
 
@@ -64,7 +81,7 @@
     <nav id="mainNav" class="bg-white/80 dark:bg-slate-900/80 backdrop-blur-md shadow-sm sticky top-0 z-40 transition-all duration-300">
         <div class="container mx-auto px-4 py-3 flex justify-between items-center h-[60px]">
             <h1 class="text-2xl font-black text-indigo-600 dark:text-indigo-400 cursor-pointer flex items-center gap-2" onclick="switchTab('home')">
-                <i class="fa-solid fa-bolt text-yellow-400"></i> GIFT CORNER
+                <i class="fa-solid fa-bolt text-yellow-400"></i> PRANTO GIFT CORNER
             </h1>
             
             <!-- Desktop Search Bar -->
@@ -224,7 +241,19 @@
                 <div id="checkoutStep2" class="hidden transition-all duration-500 w-full">
                     <div class="flex items-center gap-3 mb-6 border-b dark:border-slate-700 pb-3"><div class="w-8 h-8 rounded-full bg-emerald-500 text-white flex justify-center items-center font-bold">2</div><h3 class="font-black text-lg text-slate-800 dark:text-white">Payment Method</h3></div>
                     <div class="bg-indigo-50 dark:bg-indigo-900/20 p-4 rounded-xl mb-6 border border-indigo-100 dark:border-indigo-800/30">
-                        <p class="text-sm text-slate-600 dark:text-slate-300 font-medium mb-3">Please select a payment method and Send Money to the number below.</p>
+                        <p class="text-[13px] text-slate-700 dark:text-slate-300 font-medium mb-4 leading-relaxed bg-white/50 dark:bg-slate-800/50 p-3 rounded-lg border border-indigo-100 dark:border-indigo-900/30">
+    📢 <b>অর্ডার কনফার্মেশন নোটিশ</b><br>
+    প্রিয় গ্রাহক,<br>
+    ✅ অবশ্যই ১৫০ টাকা ডেলিভারি চার্জ প্রদান করে অর্ডার কনফার্ম করতে হবে।<br>
+    💳 <b>পেমেন্ট পদ্ধতি:</b><br>
+    বিকাশ / নগদ থেকে Send Money করে পেমেন্ট সম্পন্ন করুন।<br>
+    🧾 পেমেন্ট সম্পন্ন করার পর ট্রান্সেকশন আইডি প্রদান করে নিচের "Order Confirm" বাটনে ক্লিক করুন।<br>
+    📦 অর্ডার কনফার্ম হওয়ার পর সর্বোচ্চ ৩ দিনের মধ্যে আপনার পণ্য আপনার ঠিকানায় পৌঁছে যাবে।<br>
+    ⚠️ <b>বিশেষ দ্রষ্টব্য:</b><br>
+    যদি কোনো অনিবার্য কারণে নির্ধারিত সময়ের মধ্যে পণ্য আপনার হাতে পৌঁছাতে বিলম্ব হয়, তবে আমরা আন্তরিকভাবে দুঃখিত। আপনার ধৈর্য ও সহযোগিতার জন্য ধন্যবাদ।<br>
+    ধন্যবাদ। ❤️<br>
+    আপনার আস্থাই আমাদের অনুপ্রেরণা।
+</p>
                         <select id="chkPayMethod" onchange="changePayMethod()" class="w-full mb-4 p-3.5 border border-slate-200 rounded-xl dark:bg-slate-900 dark:border-slate-700 outline-none font-bold focus:border-indigo-500 text-sm"><option value="bkash">bKash (বিকাশ)</option><option value="nagad">Nagad (ন নগদ)</option></select>
                         <div class="text-center p-4 bg-white dark:bg-slate-800 rounded-xl shadow-sm border border-slate-200 dark:border-slate-700 mb-4"><p class="text-xs font-bold text-slate-400 uppercase mb-1">Send Money To</p><p id="adminPayNumber" class="text-2xl font-black text-pink-600 tracking-wider">Loading...</p></div>
                     </div>
@@ -508,6 +537,7 @@
         import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js";
         import { getFirestore, collection, onSnapshot, query, where, getDocs, getDoc, doc, addDoc, updateDoc, setDoc, serverTimestamp, orderBy, limit } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js";
         import { getAuth, signInWithEmailAndPassword, createUserWithEmailAndPassword, onAuthStateChanged, signOut, updateProfile, EmailAuthProvider, reauthenticateWithCredential, updatePassword, sendPasswordResetEmail } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-auth.js";
+        import { increment } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js";
 
 const firebaseConfig = {
   apiKey: "AIzaSyDIbUu2KuZpwsLZ1jnPPWD1IVtKjBESC_E",
@@ -518,6 +548,20 @@ const firebaseConfig = {
   appId: "1:955858360978:web:0d06d77c84ea480416644b"
 };
         const app = initializeApp(firebaseConfig); const db = getFirestore(app); const auth = getAuth(app);
+
+async function trackAppView() {
+    const now = new Date();
+    const today = now.toISOString().split('T')[0]; // YYYY-MM-DD
+    const hour = now.getHours().toString().padStart(2, '0'); // HH (যেমন: 09, 14, 22)
+
+    const viewRef = doc(db, "app_analytics", today);
+    
+    await setDoc(viewRef, { 
+        totalViews: increment(1), 
+        date: today,
+        [`hourly_${hour}`]: increment(1) // প্রতি ঘণ্টার ভিউ ট্র্যাক করবে
+    }, { merge: true });
+}
 
         window.cachedProducts = {}; window.searchProductsArray = []; window.cart = JSON.parse(localStorage.getItem('cart') || '[]'); window.favorites = JSON.parse(localStorage.getItem('favorites') || '[]'); window.currentUser = null;
         window.adminSettings = { bkash: "01XXXXXXXXX", nagad: "01XXXXXXXXX", deliveryCharge: 120, adminWhatsapp: "", adminAddress: "", adminQR: "", adsterraLink: "" };
@@ -558,52 +602,78 @@ const firebaseConfig = {
             const initialHash = location.hash.replace('#', '') || 'home'; window.navStack.push(initialHash); handleRoute(initialHash); 
         });
 
-        function handleRoute(hash) {
-            if(!hash) hash = 'home';
-            const protectedRoutes = ['cart', 'checkout', 'chat', 'me', 'orders', 'wishlist', 'settings', 'password'];
-            if(protectedRoutes.includes(hash)) { if(!auth.currentUser && !currentUser) { showToast("Please login first!", "error"); location.hash = 'login'; return; } }
+function handleRoute(hash) {
+    if(!hash) hash = 'home';
+    
+    // ১. লগইন প্রটেকশন চেক
+    const protectedRoutes = ['cart', 'checkout', 'chat', 'me', 'orders', 'wishlist', 'settings', 'password', 'admininfo'];
+    if(protectedRoutes.includes(hash)) { 
+        if(!auth.currentUser && !window.currentUser) { 
+            showToast("Please login first!", "error"); 
+            location.hash = 'login'; 
+            return; 
+        } 
+    }
 
-            const mAuth = document.getElementById('authModal'), mPwd = document.getElementById('passwordModal'), mSet = document.getElementById('settingsSidebar'), mAcc = document.getElementById('accountModal');
-            const isAuthHash = (hash === 'login' || hash === 'register');
-            
-            if(!isAuthHash && !mAuth.classList.contains('hidden')) { document.getElementById('authModalContent').classList.add('scale-95', 'opacity-0'); setTimeout(() => mAuth.classList.add('hidden'), 300); }
-            if(!mPwd.classList.contains('hidden')) { document.getElementById('passwordModalContent').classList.add('scale-95', 'opacity-0'); setTimeout(() => mPwd.classList.add('hidden'), 300); }
-            if(!mAcc.classList.contains('hidden')) { document.getElementById('accountModalContent').classList.add('scale-95', 'opacity-0'); setTimeout(() => mAcc.classList.add('hidden'), 300); }
-            if(!mSet.classList.contains('translate-x-full')) { mSet.classList.add('translate-x-full'); setTimeout(() => document.getElementById('settingsOverlay').classList.add('hidden'), 300); }
+    // ২. সব সেকশন হাইড করা
+    document.querySelectorAll('.view-section').forEach(el => el.classList.remove('active'));
+    const targetView = document.getElementById(`view-${hash}`);
+    if(targetView) { 
+        targetView.classList.add('active'); 
+        window.scrollTo({ top: 0, behavior: 'smooth' }); 
+    }
 
-            if(isAuthHash) { mAuth.classList.remove('hidden'); setTimeout(() => document.getElementById('authModalContent').classList.remove('scale-95', 'opacity-0'), 10); document.getElementById('loginFormBlock').style.display = hash === 'login' ? 'block' : 'none'; document.getElementById('registerFormBlock').style.display = hash === 'register' ? 'block' : 'none'; return; }
-            if(hash === 'settings') { document.getElementById('settingsOverlay').classList.remove('hidden'); setTimeout(() => mSet.classList.remove('translate-x-full'), 10); return; }
-            if(hash === 'password') { mPwd.classList.remove('hidden'); setTimeout(() => document.getElementById('passwordModalContent').classList.remove('scale-95', 'opacity-0'), 10); return; }
+    // ৩. সার্চবার কন্ট্রোল - আপনার অরিজিনাল HTML ডিজাইন ফিক্স
+    const deskSearch = document.getElementById('topSearchWrap');
+    const mobSearch = document.getElementById('mobileSearchWrap');
+    const mainNav = document.getElementById('mainNav');
+    
+    const hideSearchOn = ['checkout', 'me', 'chat', 'login', 'register', 'admininfo', 'orders', 'password'];
 
-            document.querySelectorAll('.view-section').forEach(el => el.classList.remove('active'));
-            const view = document.getElementById(`view-${hash}`);
-            if(view) { view.classList.add('active'); window.scrollTo({ top: 0, behavior: 'smooth' }); } else document.getElementById('view-home').classList.add('active');
+    if(hideSearchOn.includes(hash)) {
+        // এই পেজগুলোতে সার্চবার পুরোপুরি ভ্যানিশ (Display None)
+        if(deskSearch) deskSearch.className = "hidden";
+        if(mobSearch) mobSearch.className = "hidden";
+        
+        mainNav.className = "bg-white dark:bg-slate-900 shadow-sm sticky top-0 z-40 transition-all duration-300";
+        document.querySelectorAll('#mainNav h1').forEach(el => {
+            el.classList.remove('text-white');
+            el.classList.add('text-indigo-600');
+        });
+    } else {
+        // এখানে আপনার HTML-এর অরিজিনাল ক্লাসগুলো হুবহু (String আকারে) ফিরিয়ে দেওয়া হয়েছে
+        // যাতে জাভাস্ক্রিপ্ট আপনার মোবাইল-ডেস্কটপ ডিজাইন নষ্ট না করে
+        if(deskSearch) deskSearch.className = "hidden md:flex w-1/2 relative transition-all duration-300";
+        if(mobSearch) mobSearch.className = "md:hidden px-4 pb-3 relative transition-all duration-300";
 
-            const deskCurve = document.getElementById('desktopHomeCurve'), mobCurve = document.getElementById('mobileHomeCurve'), mainNav = document.getElementById('mainNav');
-            if(hash === 'home') {
-                if(deskCurve) deskCurve.classList.remove('hidden'); if(mobCurve) mobCurve.style.display = 'block';
-                mainNav.classList.remove('shadow-sm', 'bg-white/80', 'dark:bg-slate-900/80'); mainNav.classList.add('bg-transparent', 'dark:bg-transparent');
-                
-                document.querySelectorAll('#mainNav h1').forEach(el => { el.classList.add('text-white'); el.classList.remove('text-indigo-600', 'dark:text-indigo-400'); });
-                const cartBtn = document.getElementById('cartBtnDesktop');
-                if(cartBtn) { cartBtn.classList.add('text-white'); cartBtn.classList.remove('text-slate-500'); }
-            } else {
-                if(deskCurve) deskCurve.classList.add('hidden'); if(mobCurve) mobCurve.style.display = 'none';
-                mainNav.classList.add('shadow-sm', 'bg-white/80', 'dark:bg-slate-900/80'); mainNav.classList.remove('bg-transparent', 'dark:bg-transparent');
-                
-                document.querySelectorAll('#mainNav h1').forEach(el => { el.classList.remove('text-white'); el.classList.add('text-indigo-600', 'dark:text-indigo-400'); });
-                const cartBtn = document.getElementById('cartBtnDesktop');
-                if(cartBtn) { cartBtn.classList.remove('text-white'); cartBtn.classList.add('text-slate-500'); }
-            }
-
-            const deskSearch = document.getElementById('topSearchWrap'), mobSearch = document.getElementById('mobileSearchWrap');
-            if(hash === 'me') { if(deskSearch) deskSearch.classList.add('invisible'); if(mobSearch) { mobSearch.classList.add('opacity-0', 'h-0', 'overflow-hidden'); mobSearch.classList.remove('pb-3'); } } 
-            else { if(deskSearch) deskSearch.classList.remove('invisible'); if(mobSearch) { mobSearch.classList.remove('opacity-0', 'h-0', 'overflow-hidden'); mobSearch.classList.add('pb-3'); } }
-
-            document.querySelectorAll('.nav-btn').forEach(btn => { btn.classList.remove('text-indigo-600'); btn.classList.add('text-slate-400'); if(btn.dataset.tab === hash) { btn.classList.remove('text-slate-400'); btn.classList.add('text-indigo-600'); btn.querySelector('i').classList.add('scale-110'); } else btn.querySelector('i')?.classList.remove('scale-110'); });
-
-            if(hash === 'cart') renderCart(); if(hash === 'chat') loadChatHistory(); if(hash === 'orders') fetchMyOrders(); if(hash === 'wishlist') renderWishlist();
+        if(hash === 'home') {
+            mainNav.className = "bg-transparent dark:bg-transparent sticky top-0 z-40 transition-all duration-300";
+            document.querySelectorAll('#mainNav h1').forEach(el => {
+                el.classList.add('text-white');
+                el.classList.remove('text-indigo-600');
+            });
+        } else {
+            mainNav.className = "bg-white/80 dark:bg-slate-900/80 backdrop-blur-md shadow-sm sticky top-0 z-40 transition-all duration-300";
+            document.querySelectorAll('#mainNav h1').forEach(el => {
+                el.classList.remove('text-white');
+                el.classList.add('text-indigo-600');
+            });
         }
+    }
+
+    // ৪. বটম নেভিগেশন হাইলাইট
+    document.querySelectorAll('.nav-btn').forEach(btn => {
+        const isCurrent = btn.dataset.tab === hash;
+        btn.classList.toggle('text-indigo-600', isCurrent);
+        btn.classList.toggle('text-slate-400', !isCurrent);
+    });
+
+    // ৫. ডাটা লোড ফাংশন
+    if(hash === 'cart') renderCart(); 
+    if(hash === 'chat') loadChatHistory(); 
+    if(hash === 'orders') fetchMyOrders(); 
+    if(hash === 'wishlist') renderWishlist();
+}
 
         // ================= AUTH & USER PERSISTENCE =================
         const updateUI = (n, e) => {
