@@ -607,23 +607,30 @@ function handleRoute(hash) {
     if (!hash) hash = 'home';
     let productId = null;
 
-    // ১. চেক করা যে লিংকে আইডি আছে কিনা (যেমন: details-12345)
+    // ১. শেয়ার করা লিংক হ্যান্ডেল করা (details-ID)
     if (hash.startsWith('details-')) {
         productId = hash.split('-')[1];
-        hash = 'details'; // ভিউ হিসেবে 'details' সেট করলাম
+        hash = 'details';
     }
 
-    // ২. প্রটেক্টেড রুট চেক
+    // ২. লগইন চেক (Protected Routes)
     const protectedRoutes = ['cart', 'checkout', 'chat', 'me', 'orders', 'wishlist', 'settings', 'password', 'admininfo'];
     if (protectedRoutes.includes(hash)) {
-        if (!auth.currentUser && !window.currentUser) {
-            showToast("Please login first!", "error");
-            location.hash = 'login';
-            return;
+        // যদি ইউজার লগইন না থাকে
+        if (!auth.currentUser && !localStorage.getItem('userInfo')) {
+            showToast("লগইন করা নেই! দয়া করে আগে লগইন করুন।", "error");
+            location.hash = 'login'; // লগইন হ্যাশ-এ রিডাইরেক্ট
+            return; 
         }
     }
 
-    // ৩. UI এলিমেন্টগুলো ধরা
+    // ৩. মোডাল এবং এলিমেন্ট রেফারেন্স
+    const mAuth = document.getElementById('authModal');
+    const mAuthContent = document.getElementById('authModalContent');
+    const mSet = document.getElementById('settingsSidebar');
+    const mOverlay = document.getElementById('settingsOverlay');
+    const mPwd = document.getElementById('passwordModal');
+    const mPwdContent = document.getElementById('passwordModalContent');
     const navBackBtn = document.getElementById('navBackBtn');
     const mainNav = document.getElementById('mainNav');
     const deskSearch = document.getElementById('topSearchWrap');
@@ -631,53 +638,95 @@ function handleRoute(hash) {
     const mainBottomNav = document.querySelector('nav.md\\:hidden.fixed.bottom-0'); 
     const productBottomNav = document.getElementById('productBottomNav'); 
 
-    // ৪. ব্যাক বাটন এবং মেনু কন্ট্রোল
-    if (hash === 'home') {
-        navBackBtn?.classList.add('hidden');
+    const isAuthHash = (hash === 'login' || hash === 'register');
+
+    // ৪. লগইন/রেজিস্টার পপআপ লজিক
+    if (isAuthHash) {
+        if (mAuth) {
+            mAuth.classList.remove('hidden');
+            setTimeout(() => mAuthContent?.classList.remove('scale-95', 'opacity-0'), 10);
+            document.getElementById('loginFormBlock').style.display = (hash === 'login' ? 'block' : 'none');
+            document.getElementById('registerFormBlock').style.display = (hash === 'register' ? 'block' : 'none');
+        }
     } else {
-        navBackBtn?.classList.remove('hidden');
+        // হ্যাশ লগইন না হলে পপআপ হাইড করা
+        if (mAuthContent) mAuthContent.classList.add('scale-95', 'opacity-0');
+        setTimeout(() => mAuth?.classList.add('hidden'), 300);
     }
 
-    // ৫. ভিউ পরিবর্তন (Sections Display)
-    document.querySelectorAll('.view-section').forEach(el => {
-        el.classList.remove('active');
-        el.style.display = 'none';
-    });
-
-    const targetView = document.getElementById(`view-${hash}`);
-    if (targetView) {
-        targetView.classList.add('active');
-        targetView.style.display = 'block';
+    // ৫. সেটিংস সাইডবার কন্ট্রোল
+    if (hash === 'settings') {
+        mOverlay?.classList.remove('hidden');
+        setTimeout(() => mSet?.classList.remove('translate-x-full'), 10);
+    } else {
+        mSet?.classList.add('translate-x-full');
+        setTimeout(() => mOverlay?.classList.add('hidden'), 300);
     }
 
-    // ৬. যদি শেয়ার করা লিংকের প্রোডাক্ট আইডি থাকে, তবে সেটা লোড করা
+    // ৬. পাসওয়ার্ড রিসেট মোডাল
+    if (hash === 'password') {
+        mPwd?.classList.remove('hidden');
+        setTimeout(() => mPwdContent?.classList.remove('scale-95', 'opacity-0'), 10);
+    } else {
+        if (mPwdContent) mPwdContent.classList.add('scale-95', 'opacity-0');
+        setTimeout(() => mPwd?.classList.add('hidden'), 300);
+    }
+
+    // ৭. ভিউ সেকশন ডিসপ্লে (Sections Show/Hide)
+    if (!isAuthHash && hash !== 'settings' && hash !== 'password') {
+        document.querySelectorAll('.view-section').forEach(el => {
+            el.classList.remove('active');
+            el.style.display = 'none';
+        });
+
+        const targetView = document.getElementById(`view-${hash}`);
+        if (targetView) {
+            targetView.classList.add('active');
+            targetView.style.display = 'block';
+        }
+    }
+
+    // ৮. শেয়ার করা প্রোডাক্ট লোড করা
     if (hash === 'details' && productId) {
         openDetails(productId);
     }
 
-    // ৭. ডিটেইলস পেজের জন্য স্পেশাল মেনু দেখানো
-    if (hash === 'details') {
-        if (mainBottomNav) mainBottomNav.style.display = 'none';
-        if (productBottomNav) productBottomNav.style.display = 'block';
+    // ৯. হেডার এবং নেভিগেশন ডিজাইন কন্ট্রোল
+    if (hash === 'home') {
+        navBackBtn?.classList.add('hidden');
+        mainNav.className = "bg-transparent dark:bg-transparent sticky top-0 z-40 transition-all duration-300";
+        document.querySelectorAll('#mainNav h1').forEach(el => { el.classList.add('text-white'); el.classList.remove('text-indigo-600'); });
+    } else {
+        navBackBtn?.classList.remove('hidden');
+        mainNav.className = "bg-white/80 dark:bg-slate-900/80 backdrop-blur-md shadow-sm sticky top-0 z-40";
+        document.querySelectorAll('#mainNav h1').forEach(el => { el.classList.remove('text-white'); el.classList.add('text-indigo-600'); });
+    }
+
+    // সার্চবার হাইড লজিক
+    const hideSearchOn = ['details', 'checkout', 'me', 'chat', 'login', 'register', 'admininfo', 'orders', 'password', 'settings'];
+    if (hideSearchOn.includes(hash)) {
         if (deskSearch) deskSearch.className = "hidden";
         if (mobSearch) mobSearch.className = "hidden";
     } else {
-        if (mainBottomNav) mainBottomNav.style.display = 'flex';
-        if (productBottomNav) productBottomNav.style.display = 'none';
-        
-        // সার্চবার আগের মতো ফিরিয়ে আনা
-        if (hash !== 'home') {
-            if (deskSearch) deskSearch.className = "hidden md:flex flex-1 mx-10 relative";
-            if (mobSearch) mobSearch.className = "md:hidden px-4 pb-3 relative";
-        }
+        if (deskSearch) deskSearch.className = "hidden md:flex flex-1 mx-10 relative";
+        if (mobSearch) mobSearch.className = "md:hidden px-4 pb-3 relative";
     }
 
-    // ৮. পেজ অনুযায়ী ডাটা লোড
+    // বটম নেভিগেশন কন্ট্রোল
+    if (hash === 'details') {
+        if (mainBottomNav) mainBottomNav.style.display = 'none';
+        if (productBottomNav) productBottomNav.style.display = 'block';
+    } else {
+        if (mainBottomNav) mainBottomNav.style.display = 'flex';
+        if (productBottomNav) productBottomNav.style.display = 'none';
+    }
+
+    // ১০. পেজ অনুযায়ী ডাটা লোড
     if (hash === 'cart') renderCart();
     if (hash === 'chat') loadChatHistory();
     if (hash === 'orders') fetchMyOrders();
     if (hash === 'wishlist') renderWishlist();
-    
+
     window.scrollTo({ top: 0, behavior: 'smooth' });
 }
 
