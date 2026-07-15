@@ -605,19 +605,15 @@ async function trackAppView() {
 
 function handleRoute(hash) {
     if (!hash) hash = 'home';
+    let productId = null;
 
-    // ১. শেয়ার করা লিংক চেক করা (যেমন: #details-ID)
-    // কেউ যদি শেয়ার করা লিংকে ক্লিক করে আসে, তবে সরাসরি সেই প্রোডাক্ট ওপেন হবে
+    // ১. চেক করা যে লিংকে আইডি আছে কিনা (যেমন: details-12345)
     if (hash.startsWith('details-')) {
-        const productId = hash.split('-')[1];
-        if (productId) {
-            openDetails(productId);
-            // আমরা চাই না নিচের অন্য কোডগুলো রান হোক, তাই এখানেই শেষ
-            return; 
-        }
+        productId = hash.split('-')[1];
+        hash = 'details'; // ভিউ হিসেবে 'details' সেট করলাম
     }
 
-    // ২. প্রটেক্টেড রুট চেক (লগইন ছাড়া ঢুকতে দিবে না)
+    // ২. প্রটেক্টেড রুট চেক
     const protectedRoutes = ['cart', 'checkout', 'chat', 'me', 'orders', 'wishlist', 'settings', 'password', 'admininfo'];
     if (protectedRoutes.includes(hash)) {
         if (!auth.currentUser && !window.currentUser) {
@@ -627,130 +623,62 @@ function handleRoute(hash) {
         }
     }
 
-    // ৩. এলিমেন্ট রেফারেন্স সংগ্রহ
-    const mAuth = document.getElementById('authModal');
-    const mSet = document.getElementById('settingsSidebar');
-    const mOverlay = document.getElementById('settingsOverlay');
-    const mPwd = document.getElementById('passwordModal');
+    // ৩. UI এলিমেন্টগুলো ধরা
     const navBackBtn = document.getElementById('navBackBtn');
     const mainNav = document.getElementById('mainNav');
     const deskSearch = document.getElementById('topSearchWrap');
     const mobSearch = document.getElementById('mobileSearchWrap');
-    const deskCurve = document.getElementById('desktopHomeCurve');
-    const mobCurve = document.getElementById('mobileHomeCurve');
     const mainBottomNav = document.querySelector('nav.md\\:hidden.fixed.bottom-0'); 
     const productBottomNav = document.getElementById('productBottomNav'); 
 
-    const isAuthHash = (hash === 'login' || hash === 'register');
-
-    // ৪. ব্যাক বাটন কন্ট্রোল
+    // ৪. ব্যাক বাটন এবং মেনু কন্ট্রোল
     if (hash === 'home') {
         navBackBtn?.classList.add('hidden');
     } else {
         navBackBtn?.classList.remove('hidden');
     }
 
-    // ৫. সেটিংস এবং মোডাল হ্যান্ডেল করা
-    if (hash === 'settings') {
-        mOverlay?.classList.remove('hidden');
-        setTimeout(() => mSet?.classList.remove('translate-x-full'), 10);
-    } else {
-        mSet?.classList.add('translate-x-full');
-        setTimeout(() => mOverlay?.classList.add('hidden'), 300);
+    // ৫. ভিউ পরিবর্তন (Sections Display)
+    document.querySelectorAll('.view-section').forEach(el => {
+        el.classList.remove('active');
+        el.style.display = 'none';
+    });
+
+    const targetView = document.getElementById(`view-${hash}`);
+    if (targetView) {
+        targetView.classList.add('active');
+        targetView.style.display = 'block';
     }
 
-    if (hash === 'password') {
-        mPwd?.classList.remove('hidden');
-        setTimeout(() => document.getElementById('passwordModalContent')?.classList.remove('scale-95', 'opacity-0'), 10);
-    } else {
-        if (!mPwd?.classList.contains('hidden')) {
-            document.getElementById('passwordModalContent')?.classList.add('scale-95', 'opacity-0');
-            setTimeout(() => mPwd?.classList.add('hidden'), 300);
-        }
+    // ৬. যদি শেয়ার করা লিংকের প্রোডাক্ট আইডি থাকে, তবে সেটা লোড করা
+    if (hash === 'details' && productId) {
+        openDetails(productId);
     }
 
-    if (isAuthHash) {
-        mAuth?.classList.remove('hidden');
-        setTimeout(() => document.getElementById('authModalContent')?.classList.remove('scale-95', 'opacity-0'), 10);
-        document.getElementById('loginFormBlock').style.display = (hash === 'login' ? 'block' : 'none');
-        document.getElementById('registerFormBlock').style.display = (hash === 'register' ? 'block' : 'none');
-    } else {
-        if (!mAuth?.classList.contains('hidden')) {
-            document.getElementById('authModalContent')?.classList.add('scale-95', 'opacity-0');
-            setTimeout(() => mAuth?.classList.add('hidden'), 300);
-        }
-    }
-
-    // ৬. মেইন সেকশন ডিসপ্লে (View Sections)
-    if (!isAuthHash && hash !== 'settings' && hash !== 'password') {
-        document.querySelectorAll('.view-section').forEach(el => {
-            el.classList.remove('active');
-            el.style.display = 'none';
-        });
-        const targetView = document.getElementById(`view-${hash}`);
-        if (targetView) {
-            targetView.classList.add('active');
-            targetView.style.display = 'block';
-        } else {
-            document.getElementById('view-home').classList.add('active');
-            document.getElementById('view-home').style.display = 'block';
-        }
-        window.scrollTo({ top: 0, behavior: 'smooth' });
-    }
-
-    // ৭. সার্চবার এবং টাইটেল বার ডিজাইন
-    const hideSearchOn = ['details', 'checkout', 'me', 'chat', 'login', 'register', 'admininfo', 'orders', 'password', 'settings'];
-
-    if (hideSearchOn.includes(hash)) {
-        if (deskSearch) deskSearch.className = "hidden";
-        if (mobSearch) mobSearch.className = "hidden";
-        mainNav.className = "bg-white dark:bg-slate-900 shadow-sm sticky top-0 z-40 transition-all duration-300";
-        document.querySelectorAll('#mainNav h1').forEach(el => {
-            el.classList.remove('text-white');
-            el.classList.add('text-indigo-600');
-        });
-    } else {
-        if (deskSearch) deskSearch.className = "hidden md:flex flex-1 mx-10 relative";
-        if (mobSearch) mobSearch.className = "md:hidden px-4 pb-3 relative";
-        if (hash === 'home') {
-            if (deskCurve) deskCurve.classList.remove('hidden');
-            if (mobCurve) mobCurve.style.display = 'block';
-            mainNav.className = "bg-transparent dark:bg-transparent sticky top-0 z-40 transition-all duration-300";
-            document.querySelectorAll('#mainNav h1').forEach(el => {
-                el.classList.add('text-white');
-                el.classList.remove('text-indigo-600');
-            });
-        } else {
-            if (deskCurve) deskCurve.classList.add('hidden');
-            if (mobCurve) mobCurve.style.display = 'none';
-            mainNav.className = "bg-white/80 dark:bg-slate-900/80 backdrop-blur-md shadow-sm sticky top-0 z-40";
-            document.querySelectorAll('#mainNav h1').forEach(el => {
-                el.classList.remove('text-white');
-                el.classList.add('text-indigo-600');
-            });
-        }
-    }
-
-    // ৮. বটম নেভিগেশন সুইচ
+    // ৭. ডিটেইলস পেজের জন্য স্পেশাল মেনু দেখানো
     if (hash === 'details') {
         if (mainBottomNav) mainBottomNav.style.display = 'none';
         if (productBottomNav) productBottomNav.style.display = 'block';
+        if (deskSearch) deskSearch.className = "hidden";
+        if (mobSearch) mobSearch.className = "hidden";
     } else {
         if (mainBottomNav) mainBottomNav.style.display = 'flex';
         if (productBottomNav) productBottomNav.style.display = 'none';
+        
+        // সার্চবার আগের মতো ফিরিয়ে আনা
+        if (hash !== 'home') {
+            if (deskSearch) deskSearch.className = "hidden md:flex flex-1 mx-10 relative";
+            if (mobSearch) mobSearch.className = "md:hidden px-4 pb-3 relative";
+        }
     }
 
-    // ৯. মেনু আইকন হাইলাইট
-    document.querySelectorAll('.nav-btn').forEach(btn => {
-        const isCurrent = btn.dataset.tab === hash;
-        btn.classList.toggle('text-indigo-600', isCurrent);
-        btn.classList.toggle('text-slate-400', !isCurrent);
-    });
-
+    // ৮. পেজ অনুযায়ী ডাটা লোড
     if (hash === 'cart') renderCart();
     if (hash === 'chat') loadChatHistory();
     if (hash === 'orders') fetchMyOrders();
     if (hash === 'wishlist') renderWishlist();
+    
+    window.scrollTo({ top: 0, behavior: 'smooth' });
 }
 
 
@@ -1314,29 +1242,23 @@ window.openDetails = async (id) => {
 };
 
 window.shareProduct = async (id, name) => {
-    // শেয়ার করার লিংক তৈরি (আপনার ডোমেইন অনুযায়ী)
-    const shareUrl = `${window.location.origin}/#details-${id}`;
+    // সঠিক লিংক ফরম্যাট: ডোমেইন + #details-ID
+    const shareUrl = `${window.location.origin}${window.location.pathname}#details-${id}`;
     
-    // ফোনের নেটিভ শেয়ার মেনু ওপেন করার চেষ্টা করবে
     if (navigator.share) {
         try {
             await navigator.share({
                 title: name,
-                text: `PRANTO GIFT CORNER-এ এই চমৎকার প্রোডাক্টটি দেখুন: ${name}`,
+                text: `PRANTO GIFT CORNER-এ এই প্রোডাক্টটি দেখুন: ${name}`,
                 url: shareUrl,
             });
-            console.log('Successfully shared');
         } catch (err) {
-            console.log('Error sharing:', err);
+            console.log('Sharing failed', err);
         }
     } else {
-        // যদি ব্রাউজার শেয়ার সাপোর্ট না করে (যেমন পিসি), তবে লিংক কপি হবে
-        try {
-            await navigator.clipboard.writeText(shareUrl);
-            showToast("Link Copied to Clipboard!");
-        } catch (err) {
-            showToast("Failed to copy link", "error");
-        }
+        // নেটিভ শেয়ার না থাকলে লিংক কপি হবে
+        navigator.clipboard.writeText(shareUrl);
+        showToast("লিংক কপি হয়েছে! এখন যে কাউকে পাঠান।");
     }
 };
 
