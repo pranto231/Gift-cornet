@@ -134,14 +134,19 @@
 
             <div class="relative z-10 px-4 pt-4 mb-2">
                 
-                <!-- ADSTERRA 320x50 THIN BANNER SLOT (Replaced Greeting) -->
-                <div id="adsterraHomeBannerSlot" class="w-full flex justify-center mb-4 mt-1 min-h-[50px]">
-                    <!-- 🔴 এখানে আপনার Adsterra এর 320x50 সাইজের <script> কোড পেস্ট করবেন 🔴 -->
-                    <!-- নিচে একটি ডেমো/প্লেসহোল্ডার দেওয়া আছে, এটা মুছে আপনার কোড বসাবেন -->
-                    <div class="w-[320px] h-[50px] bg-white/20 backdrop-blur-sm border border-white/30 rounded flex items-center justify-center text-white/80 text-xs font-bold shadow-sm">
-                        Adsterra Banner Space (320x50)
-                    </div>
-                </div>
+                <!-- ADSTERRA 320x50 THIN BANNER SLOT -->
+<div id="adsterraHomeBannerSlot" class="w-full flex justify-center mb-4 mt-1 min-h-[50px]">
+    <script>
+        atOptions = {
+            'key': 'cd7e39489861c1eb254e61c30bd836b3',
+            'format': 'iframe',
+            'height': 50,
+            'width': 320,
+            'params': {}
+        };
+    </script>
+    <script src="https://www.highperformanceformat.com/cd7e39489861c1eb254e61c30bd836b3/invoke.js"></script>
+</div>
 
                 <div class="relative group mt-2">
                     <div id="bannerSlider" class="flex overflow-x-auto hide-scroll snap-x-mandatory gap-4 rounded-2xl scroll-smooth shadow-xl border border-white/10">
@@ -512,15 +517,14 @@
         <h3 class="text-xl font-black text-center text-slate-800 dark:text-white mb-2">কালার সিলেক্ট করুন</h3>
         <p class="text-xs text-center text-slate-500 mb-6 font-medium">অর্ডারটি সম্পন্ন করতে আপনার পছন্দের রঙটি বেছে নিন</p>
         
-        <!-- কালার লিস্ট এখানে আসবে -->
         <div id="popupColorList" class="flex flex-wrap gap-3 justify-center mb-8"></div>
         
         <button onclick="closeColorPopup()" class="w-full py-3 text-slate-400 font-bold hover:text-rose-500 transition">বন্ধ করুন</button>
     </div>
 </div>
-<!-- এটি ডিটেইলস পেজের জন্য নতুন নেভিগেশন বার -->
+
 <nav id="productBottomNav" class="fixed bottom-0 w-full bg-white/95 dark:bg-slate-800/95 backdrop-blur border-t border-slate-100 dark:border-slate-700 h-16 z-50 pb-safe hidden shadow-lg">
-    <!-- এখানে বাটনগুলো জাভাস্ক্রিপ্ট থেকে আসবে -->
+
 </nav>
     <!-- Toast Notification -->
     <div id="toast" class="fixed top-20 right-4 bg-slate-900/95 backdrop-blur text-white px-5 py-3 rounded-xl shadow-2xl transform translate-x-full transition-all duration-300 z-[100] flex items-center gap-3 font-medium text-sm border border-slate-700"><i class="fa-solid fa-circle-check text-emerald-400"></i> <span id="toastMsg">Message</span></div>
@@ -1671,4 +1675,4 @@ window.placeOrder = async (e) => {
         };
     </script>
 </body>
-</html>
+</html>cc
