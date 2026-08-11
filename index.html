@@ -1728,7 +1728,7 @@ window.placeOrder = async (e) => {
     } finally {
         btn.innerHTML = '<i class="fa-solid fa-check-circle"></i> Confirm Order'; 
         btn.disabled = false; 
-    }
+    
 };
 
         // ================= SUPPORT CHAT =================
@@ -1747,7 +1747,7 @@ window.placeOrder = async (e) => {
             e.preventDefault(); if(!currentUser) return;
             const input = document.getElementById('chatInput'); const txt = input.value.trim(); if(!txt) return; input.value = '';
             await ensureChatDoc(); const ts = serverTimestamp(); await addDoc(collection(db, "support_chats", currentUser.uid, "messages"), { sender: 'user', text: txt, timestamp: ts }); await updateDoc(doc(db, "support_chats", currentUser.uid), { lastMessage: txt, lastUpdated: ts, adminUnread: true, userUnread: false });
-        });
+    
 
         // ================= ORDER HISTORY =================
         window.fetchMyOrders = () => {
@@ -1763,6 +1763,6 @@ window.placeOrder = async (e) => {
                 container.innerHTML = html;
             });
         };
-    </script>
+    
 </body>
 </html>
